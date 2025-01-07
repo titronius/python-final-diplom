@@ -47,17 +47,32 @@ def new_user_registered_signal(sender: Type[User], instance: User, created: bool
     if created and not instance.is_active:
         # send an e-mail to the user
         token, _ = ConfirmEmailToken.objects.get_or_create(user_id=instance.pk)
-
+        
+        url_to_confirm = f"{settings.DEFAULT_URL_FOR_MAIL}/user/register/confirm/{instance.email}/{token.key}"
+        
+        text_content = "Подтверждение регистрации"
+        
+        html_content  =\
+        f"""Для подтверждения регистрации перейдите по ссылке:
+        <br>
+        <a href='{url_to_confirm}'>
+        {url_to_confirm}
+        </a>
+        """
+        
         msg = EmailMultiAlternatives(
             # title:
-            f"Password Reset Token for {instance.email}",
+            f"Подтверждение регистрации {instance.email}",
             # message:
-            token.key,
+            text_content,
             # from:
             settings.EMAIL_HOST_USER,
             # to:
             [instance.email]
         )
+        
+        msg.attach_alternative(html_content, "text/html")
+        
         msg.send()
 
 

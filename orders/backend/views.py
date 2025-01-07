@@ -8,9 +8,12 @@ from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
 from yaml import Loader, load as load_yaml
 from backend.models import Category, Parameter, Product, ProductInfo, ProductParameter, Shop, ConfirmEmailToken
-from backend.serializers import UserSerializer
+from backend.serializers import ProductInfoSerializer, UserSerializer
 from backend.signals import new_user_registered, new_order
 from django.contrib.auth.password_validation import validate_password
+from rest_framework.request import Request
+from rest_framework.response import Response
+from django.db.models import Q
 
 class RegisterAccount(APIView):
     def post(self, request, *args, **kwargs):
@@ -74,7 +77,7 @@ class LoginAccount(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, json_dumps_params={'ensure_ascii': False})
 
 class ConfirmToken(APIView):
-    def get(self, request, *args, **kwargs):
+    def get(self, request: Request, *args, **kwargs):
         """
         Verify a user's email address.
 
@@ -86,16 +89,18 @@ class ConfirmToken(APIView):
         Returns:
             HttpResponse: The response indicating the status of the operation.
         """
-        print(kwargs['email'])
-        print(kwargs['token'])
-        token = ConfirmEmailToken.objects.filter(user__email = kwargs['email'],
-                                                 key = kwargs['token'])
-        if len(token) == 1:
-            token = token[0]
-            token.user.is_active = True
-            token.user.save()
-            token.delete()
-            return HttpResponse(f'Успешная регистрация для: {kwargs['email']}')
+        email = request.query_params.get('email')
+        token = request.query_params.get('token')
+        
+        if email and token:
+            token = ConfirmEmailToken.objects.filter(user__email = email,
+                                                    key = token)
+            if len(token) == 1:
+                token = token[0]
+                token.user.is_active = True
+                token.user.save()
+                token.delete()
+                return HttpResponse(f'Успешная регистрация для: {email}')
 
         return HttpResponse(f'Ошибка в токене или адресе')
 class PartnerUpdate(APIView):
@@ -148,4 +153,52 @@ class PartnerUpdate(APIView):
                 return JsonResponse({'Status': True})
             
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, json_dumps_params={'ensure_ascii': False})                 
-                    
+
+class ProductInfoView(APIView):
+    """
+    A class for searching products.
+
+    Methods:
+    - get: Retrieve the product information based on the specified filters.
+
+    Attributes:
+    - None
+    """
+
+    def get(self, request: Request, *args, **kwargs):
+        """
+        Retrieve the product information based on the specified filters.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - Response: The response containing the product information.
+        """
+        query = Q(shop__state=True)
+        params = dict(request.query_params)
+        
+        if 'shop_id' in params:
+            query = query & Q(shop_id=params['shop_id'][0])
+
+        if 'category_id' in params:
+            query = query & Q(product__category_id=params['category_id'][0])
+            
+        if 'category_name' in params:            
+            query = query & Q(product__category__name__contains=params['category_name'][0])
+            
+        if 'product_name' in params:
+            query = query & Q(product__name__contains=params['product_name'][0])
+            
+        if 'model' in params:
+            query = query & Q(model__contains=params['model'][0])
+
+        # фильтруем и отбрасываем дубликаты
+        queryset = ProductInfo.objects.filter(
+            query).select_related(
+            'shop', 'product__category').prefetch_related(
+            'product_parameters__parameter').distinct()
+
+        serializer = ProductInfoSerializer(queryset, many=True)
+
+        return Response(serializer.data)

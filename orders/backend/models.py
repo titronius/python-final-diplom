@@ -298,4 +298,4 @@ class ConfirmEmailToken(models.Model):
         return super(ConfirmEmailToken, self).save(*args, **kwargs)
 
     def __str__(self):
-        return "Password reset token for user {user}".format(user=self.user)
+        return "Token for user {user}".format(user=self.user)

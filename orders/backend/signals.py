@@ -48,7 +48,7 @@ def new_user_registered_signal(sender: Type[User], instance: User, created: bool
         # send an e-mail to the user
         token, _ = ConfirmEmailToken.objects.get_or_create(user_id=instance.pk)
         
-        url_to_confirm = f"{settings.DEFAULT_URL_FOR_MAIL}/user/register/confirm/{instance.email}/{token.key}"
+        url_to_confirm = f"{settings.DEFAULT_URL_FOR_MAIL}/user/register/confirm?email={instance.email}&token={token.key}"
         
         text_content = "Подтверждение регистрации"
         

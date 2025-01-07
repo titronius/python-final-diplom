@@ -67,8 +67,8 @@ class User(AbstractUser):
     objects = UserManager()
     USERNAME_FIELD = 'email'
     email = models.EmailField(_('email address'), unique=True)
-    company = models.CharField(verbose_name='Компания', max_length=40, blank=True)
-    position = models.CharField(verbose_name='Должность', max_length=40, blank=True)
+    company = models.CharField(verbose_name='Компания', max_length=40, blank=True, default='None')
+    position = models.CharField(verbose_name='Должность', max_length=40, blank=True, default='None')
     username_validator = UnicodeUsernameValidator()
     username = models.CharField(
         _('username'),

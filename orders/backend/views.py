@@ -1,4 +1,5 @@
 # from django.shortcuts import render
+from django.db import IntegrityError
 from django.forms import ValidationError
 from django.http import HttpResponse, JsonResponse
 from requests import get
@@ -7,13 +8,14 @@ from django.core.validators import URLValidator
 from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
 from yaml import Loader, load as load_yaml
-from backend.models import Category, Parameter, Product, ProductInfo, ProductParameter, Shop, ConfirmEmailToken
-from backend.serializers import ProductInfoSerializer, UserSerializer
+from backend.models import Category, Order, OrderItem, Parameter, Product, ProductInfo, ProductParameter, Shop, ConfirmEmailToken
+from backend.serializers import OrderItemSerializer, OrderSerializer, ProductInfoSerializer, UserSerializer
 from backend.signals import new_user_registered, new_order
 from django.contrib.auth.password_validation import validate_password
 from rest_framework.request import Request
 from rest_framework.response import Response
-from django.db.models import Q
+from ujson import loads as load_json
+from django.db.models import Q, Sum, F
 
 class RegisterAccount(APIView):
     def post(self, request, *args, **kwargs):
@@ -109,7 +111,7 @@ class PartnerUpdate(APIView):
     """
     def post(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403, json_dumps_params={'ensure_ascii': False})
+            return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'}, status=403, json_dumps_params={'ensure_ascii': False})
 
         if request.user.type != 'shop':
             return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403, json_dumps_params={'ensure_ascii': False})
@@ -179,19 +181,19 @@ class ProductInfoView(APIView):
         params = dict(request.query_params)
         
         if 'shop_id' in params:
-            query = query & Q(shop_id=params['shop_id'][0])
+            query &= Q(shop_id=params['shop_id'][0])
 
         if 'category_id' in params:
-            query = query & Q(product__category_id=params['category_id'][0])
+            query &= Q(product__category_id=params['category_id'][0])
             
         if 'category_name' in params:            
-            query = query & Q(product__category__name__contains=params['category_name'][0])
+            query &= Q(product__category__name__contains=params['category_name'][0])
             
         if 'product_name' in params:
-            query = query & Q(product__name__contains=params['product_name'][0])
+            query &= Q(product__name__contains=params['product_name'][0])
             
         if 'model' in params:
-            query = query & Q(model__contains=params['model'][0])
+            query &= Q(model__contains=params['model'][0])
 
         # фильтруем и отбрасываем дубликаты
         queryset = ProductInfo.objects.filter(
@@ -202,3 +204,115 @@ class ProductInfoView(APIView):
         serializer = ProductInfoSerializer(queryset, many=True)
 
         return Response(serializer.data)
+    
+class Basket(APIView):
+    """
+    Класс для работы с корзиной пользователя
+    """
+    def get(self, request):
+        """
+        Retrieve the items in the user's basket.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - Response: The response containing the items in the user's basket.
+        """
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'}, status=403, json_dumps_params={'ensure_ascii': False})
+        
+        basket = Order.objects.filter(
+            user_id=request.user.id, state='basket').prefetch_related(
+            'ordered_items__product_info__product__category',
+            'ordered_items__product_info__product_parameters__parameter').annotate(
+            total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
+
+        serializer = OrderSerializer(basket, many=True)
+        return Response(serializer.data)
+    
+    def post(self, request):
+        """
+        Add items to the user's basket.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - JsonResponse: The response indicating the status of the operation and any errors.
+        """
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'}, status=403, json_dumps_params={'ensure_ascii': False})
+
+        items_dict = request.data.get('items')
+        if items_dict:
+            basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
+            objects_created = 0
+            for order_item in items_dict:
+                order_item.update({'order': basket.id})
+                serializer = OrderItemSerializer(data=order_item)
+                if serializer.is_valid():
+                    try:
+                        serializer.save()
+                    except IntegrityError as error:
+                        return JsonResponse({'Status': False, 'Errors': str(error)}, json_dumps_params={'ensure_ascii': False})
+                    else:
+                        objects_created += 1
+                else:
+                    return JsonResponse({'Status': False, 'Errors': serializer.errors})
+            return JsonResponse({'Status': True, 'Создано объектов': objects_created}, json_dumps_params={'ensure_ascii': False})
+        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, json_dumps_params={'ensure_ascii': False})
+    
+    def delete(self, request):
+        """
+        Remove items from the user's basket.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - JsonResponse: The response indicating the status of the operation and any errors.
+        """
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'}, status=403, json_dumps_params={'ensure_ascii': False})
+        
+        items_dict = request.data.get('items')
+        if items_dict:
+            deleted_count = 0
+            basket = Order.objects.filter(user_id=request.user.id, state='basket').first()
+            if basket:
+                for item in items_dict:
+                    item = OrderItem.objects.filter(order_id=basket.id, product_info_id=item['product_info']).first()
+                    if item:
+                        item.delete()
+                        deleted_count += 1
+            return JsonResponse({'Status': True, 'Удалено объектов': deleted_count}, json_dumps_params={'ensure_ascii': False})
+        return JsonResponse({'Status': False, 'Errors': 'Нету данных'}, json_dumps_params={'ensure_ascii': False})
+    
+    def put(self, request):
+        """
+        Update the quantity of items in the user's basket.
+
+        Args:
+        - request (Request): The Django request object containing the user and items data.
+
+        Returns:
+        - JsonResponse: A JSON response indicating the status of the update operation.
+        - {'Status': False, 'Error': 'Необходима авторизация'}: If the user is not authenticated.
+        - {'Status': True, 'Обновлено объектов': objects_updated}: If the update is successful, 
+            where objects_updated is the number of updated items.
+        - {'Status': False, 'Errors': 'Нету данных'}: If no items data is provided in the request.
+        """
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'}, status=403, json_dumps_params={'ensure_ascii': False})
+        
+        items_dict = request.data.get('items')
+        if items_dict:
+            basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
+            objects_updated = 0
+            for order_item in items_dict:
+                if type(order_item['id']) == int and type(order_item['quantity']) == int:
+                    objects_updated += OrderItem.objects.filter(order_id=basket.id, id=order_item['id']).update(
+                        quantity=order_item['quantity'])
+            return JsonResponse({'Status': True, 'Обновлено объектов': objects_updated}, json_dumps_params={'ensure_ascii': False})
+        return JsonResponse({'Status': False, 'Errors': 'Нету данных'}, json_dumps_params={'ensure_ascii': False})

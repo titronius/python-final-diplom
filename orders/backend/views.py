@@ -156,6 +156,32 @@ class PartnerUpdate(APIView):
             
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, json_dumps_params={'ensure_ascii': False})                 
 
+class PartnerOrders(APIView):
+    """
+    Класс для получения заказов поставщиками
+     Methods:
+    - get: Retrieve the orders associated with the authenticated partner.
+
+    Attributes:
+    - None
+    """
+
+    def get(self, request):
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'}, status=403, json_dumps_params={'ensure_ascii': False})
+
+        if request.user.type != 'shop':
+            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403, json_dumps_params={'ensure_ascii': False})
+        
+        order = Order.objects.filter(
+            ordered_items__product_info__shop__user_id=request.user.id).exclude(state='basket').prefetch_related(
+            'ordered_items__product_info__product__category',
+            'ordered_items__product_info__product_parameters__parameter').select_related('contact').annotate(
+            total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
+
+        serializer = OrderSerializer(order, many=True)
+        return Response(serializer.data)
+
 class ProductInfoView(APIView):
     """
     A class for searching products.
@@ -475,9 +501,13 @@ class OrderView(APIView):
             if order:
                 if order.state != 'basket':
                     return JsonResponse({'Status': False, 'Errors': 'Заказ уже подтверждён'}, json_dumps_params={'ensure_ascii': False})
+                contact = Contact.objects.filter(user_id=request.user.id, id=request.data['contact_id']).first()
+                if not contact:
+                    return JsonResponse({'Status': False, 'Errors': 'Неправильно указан id контакта'}, json_dumps_params={'ensure_ascii': False})
                 order.contact_id = request.data['contact_id']
                 order.state = 'new'
                 order.save()
+                new_order.send(sender=self.__class__, user_id=request.user.id, state='Новый', order_id=request.data['order_id'])
                 return JsonResponse({'Status': True})
             else:
                 return JsonResponse({'Status': False, 'Errors': 'Неправильно указаны аргументы'}, json_dumps_params={'ensure_ascii': False})

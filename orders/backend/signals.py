@@ -6,7 +6,9 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver, Signal
 from django_rest_passwordreset.signals import reset_password_token_created
 
-from backend.models import ConfirmEmailToken, User
+from backend.models import ConfirmEmailToken, Order, User
+from django.db.models import Sum, F
+from backend.serializers import OrderSerializer
 
 new_user_registered = Signal()
 
@@ -28,7 +30,7 @@ def password_reset_token_created(sender, instance, reset_password_token, **kwarg
 
     msg = EmailMultiAlternatives(
         # title:
-        f"Password Reset Token for {reset_password_token.user}",
+        f"Токен для изменения пароля {reset_password_token.user}",
         # message:
         reset_password_token.key,
         # from:
@@ -95,3 +97,71 @@ def new_order_signal(user_id, state, order_id, **kwargs):
         [user.email]
     )
     msg.send()
+    
+    if state == 'Новый':
+        orders = Order.objects.filter(id=order_id).prefetch_related(
+            'ordered_items__product_info__product__category',
+            'ordered_items__product_info__product_parameters__parameter').select_related('contact').annotate(
+            total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
+      
+        orders = orders
+        serializer = OrderSerializer(orders, many=True)
+        
+        html_content = f"""
+        <h1>Информация о заказе № {serializer.data[0]['id']}</h1>
+        <table>
+        <tr>
+        <th>Продукт</th>
+        <th>Количество</th>
+        <th>Цена</th>
+        <th>Сумма</th>
+        </tr>
+        """
+        for item in serializer.data[0]['ordered_items']:
+            html_content += f"""
+            <tr>
+            <td>{item['product_info']['product']['name']}</td>
+            <td>{item['quantity']}</td>
+            <td>{item['product_info']['price']}</td>
+            <td>{item['quantity'] * item['product_info']['price']}</td>
+            </tr>
+            """
+        html_content += f"""
+        </table>
+        <br>
+        <br>
+        <b>Итого: {serializer.data[0]['total_sum']}</b>
+        <br>
+        <br>
+        <b>Контакты:</b>
+        <br>
+        <b>Телефон:</b> {serializer.data[0]['contact']['phone']}
+        <br>
+        <b>Город:</b> {serializer.data[0]['contact']['city']}
+        <br>
+        <b>Улица:</b> {serializer.data[0]['contact']['street']}
+        <br>
+        <b>Дом:</b> {serializer.data[0]['contact']['house']}
+        <br>
+        <b>Корпус:</b> {serializer.data[0]['contact']['structure']}
+        <br>
+        <b>Строение:</b> {serializer.data[0]['contact']['building']}
+        <br>
+        <b>Квартира:</b> {serializer.data[0]['contact']['apartment']}
+        """
+        
+        msg = EmailMultiAlternatives(
+            # title:
+            f"Создан новый заказ № {order_id}",
+            # message:
+            f'Новый статус заказа: {state}',
+            # from:
+            settings.EMAIL_HOST_USER,
+            # to:
+            [settings.ADMIN_EMAIL]
+        )
+        
+        msg.attach_alternative(html_content, "text/html")
+        
+        msg.send()
+        

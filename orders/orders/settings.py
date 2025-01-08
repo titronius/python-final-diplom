@@ -160,3 +160,5 @@ REST_FRAMEWORK = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 DEFAULT_URL_FOR_MAIL = 'http://127.0.0.1:8000/api/v1'
+
+ADMIN_EMAIL = 'admin@gmail.com'

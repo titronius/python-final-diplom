@@ -8,8 +8,8 @@ from django.core.validators import URLValidator
 from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
 from yaml import Loader, load as load_yaml
-from backend.models import Category, Order, OrderItem, Parameter, Product, ProductInfo, ProductParameter, Shop, ConfirmEmailToken
-from backend.serializers import OrderItemSerializer, OrderSerializer, ProductInfoSerializer, UserSerializer
+from backend.models import Category, Contact, Order, OrderItem, Parameter, Product, ProductInfo, ProductParameter, Shop, ConfirmEmailToken
+from backend.serializers import ContactSerializer, OrderItemSerializer, OrderSerializer, ProductInfoSerializer, UserSerializer
 from backend.signals import new_user_registered, new_order
 from django.contrib.auth.password_validation import validate_password
 from rest_framework.request import Request
@@ -316,3 +316,61 @@ class Basket(APIView):
                         quantity=order_item['quantity'])
             return JsonResponse({'Status': True, 'Обновлено объектов': objects_updated}, json_dumps_params={'ensure_ascii': False})
         return JsonResponse({'Status': False, 'Errors': 'Нету данных'}, json_dumps_params={'ensure_ascii': False})
+
+class UserContact(APIView):
+    def get(self, request):
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'}, status=403, json_dumps_params={'ensure_ascii': False})
+        
+        contacts = Contact.objects.filter(
+            user_id=request.user.id
+        )
+        
+        serializer = ContactSerializer(contacts, many=True)
+        return Response(serializer.data)
+    
+    def post(self, request):
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'}, status=403, json_dumps_params={'ensure_ascii': False})
+        if {'city', 'street', 'phone'}.issubset(request.data):
+            request.data.update({'user': request.user.id})
+            serializer = ContactSerializer(data=request.data)
+            
+            if serializer.is_valid():
+                serializer.save()
+                return JsonResponse({'Status': True})
+            else:
+                return JsonResponse({'Status': False, 'Errors': serializer.errors})
+            
+        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, json_dumps_params={'ensure_ascii': False})
+    
+    def delete(self, request):
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'}, status=403, json_dumps_params={'ensure_ascii': False})
+        
+        if 'id' in request.data:
+            contact = Contact.objects.filter(
+                user_id=request.user.id, id=request.data['id']
+            ).first()
+            if contact:
+                contact.delete()
+                return JsonResponse({'Status': True})
+        
+        return JsonResponse({'Status': False})
+    
+    def put(self, request):
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'}, status=403, json_dumps_params={'ensure_ascii': False})
+        
+        if 'id' in request.data:
+            contact = Contact.objects.filter(
+                user_id=request.user.id, id=request.data['id']
+            ).first()
+            if contact:
+                serializer = ContactSerializer(contact, data=request.data, partial=True)
+                if serializer.is_valid():
+                    serializer.save()
+                    return JsonResponse({'Status': True})
+                else:
+                     return JsonResponse({'Status': False, 'Errors': serializer.errors})
+        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})

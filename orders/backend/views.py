@@ -9,13 +9,13 @@ from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
 from yaml import Loader, load as load_yaml
 from backend.models import Category, Contact, Order, OrderItem, Parameter, Product, ProductInfo, ProductParameter, Shop, ConfirmEmailToken
-from backend.serializers import ContactSerializer, OrderItemSerializer, OrderSerializer, ProductInfoSerializer, UserSerializer
+from backend.serializers import ContactSerializer, OrderItemSerializer, OrderSerializer, ProductInfoSerializer, ShopSerializer, UserSerializer
 from backend.signals import new_user_registered, new_order
 from django.contrib.auth.password_validation import validate_password
 from rest_framework.request import Request
 from rest_framework.response import Response
-from ujson import loads as load_json
 from django.db.models import Q, Sum, F
+from distutils.util import strtobool
 
 class RegisterAccount(APIView):
     def post(self, request, *args, **kwargs):
@@ -167,11 +167,24 @@ class PartnerOrders(APIView):
     """
 
     def get(self, request):
+        """
+        Retrieve the orders associated with the authenticated partner.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - Response: The response containing the orders associated with the partner.
+        - {'Status': False, 'Error': 'Необходима авторизация'}: If the user is not authenticated.
+        - {'Status': False, 'Error': 'Только для магазинов'}: If the user is not a shop.
+        """
         if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'}, status=403, json_dumps_params={'ensure_ascii': False})
+            return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'},\
+                status=403, json_dumps_params={'ensure_ascii': False})
 
         if request.user.type != 'shop':
-            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403, json_dumps_params={'ensure_ascii': False})
+            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'},\
+                status=403, json_dumps_params={'ensure_ascii': False})
         
         order = Order.objects.filter(
             ordered_items__product_info__shop__user_id=request.user.id).exclude(state='basket').prefetch_related(
@@ -181,6 +194,68 @@ class PartnerOrders(APIView):
 
         serializer = OrderSerializer(order, many=True)
         return Response(serializer.data)
+
+class PartnerState(APIView):
+    """
+    A class for managing partner state.
+
+    Methods:
+    - get: Retrieve the state of the partner.
+
+    Attributes:
+    - None
+    """
+    # получить текущий статус
+    def get(self, request, *args, **kwargs):
+        """
+        Retrieve the state of the partner.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - Response: The response containing the state of the partner.
+        """
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'},\
+                status=403, json_dumps_params={'ensure_ascii': False})
+
+        if request.user.type != 'shop':
+            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'},\
+                status=403, json_dumps_params={'ensure_ascii': False})
+
+        shop = request.user.shop
+        serializer = ShopSerializer(shop)
+        return Response(serializer.data)
+
+    # изменить текущий статус
+    def post(self, request, *args, **kwargs):
+        """
+        Update the state of a partner.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - JsonResponse: The response indicating the status of the operation and any errors.
+        """
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Log in required'},\
+                status=403, json_dumps_params={'ensure_ascii': False})
+
+        if request.user.type != 'shop':
+            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'},\
+                status=403, json_dumps_params={'ensure_ascii': False})
+        state = request.data.get('state')
+        if state:
+            try:
+                Shop.objects.filter(user_id=request.user.id).update(state=strtobool(state))
+                return JsonResponse({'Status': True})
+            except ValueError as error:
+                return JsonResponse({'Status': False, 'Errors': str(error)})
+
+        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'},\
+            json_dumps_params={'ensure_ascii': False})
 
 class ProductInfoView(APIView):
     """

@@ -205,7 +205,7 @@ class ProductInfoView(APIView):
 
         return Response(serializer.data)
     
-class Basket(APIView):
+class BasketView(APIView):
     """
     Класс для работы с корзиной пользователя
     """
@@ -317,8 +317,17 @@ class Basket(APIView):
             return JsonResponse({'Status': True, 'Обновлено объектов': objects_updated}, json_dumps_params={'ensure_ascii': False})
         return JsonResponse({'Status': False, 'Errors': 'Нету данных'}, json_dumps_params={'ensure_ascii': False})
 
-class UserContact(APIView):
+class ContactView(APIView):
     def get(self, request):
+        """
+        Retrieve the contact information of the authenticated user.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - Response: The response containing the contact information.
+        """
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'}, status=403, json_dumps_params={'ensure_ascii': False})
         
@@ -330,6 +339,19 @@ class UserContact(APIView):
         return Response(serializer.data)
     
     def post(self, request):
+        """
+        Create a new contact for the authenticated user.
+
+        Args:
+        - request (Request): The Django request object containing the user and contact data.
+
+        Returns:
+        - JsonResponse: The response indicating the status of the operation and any errors.
+        - {'Status': False, 'Error': 'Необходима авторизация'}: If the user is not authenticated.
+        - {'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}: If not all required arguments are provided.
+        - {'Status': False, 'Errors': serializer.errors}: If the contact data is invalid.
+        - {'Status': True}: If the contact is created successfully.
+        """
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'}, status=403, json_dumps_params={'ensure_ascii': False})
         if {'city', 'street', 'phone'}.issubset(request.data):
@@ -345,6 +367,18 @@ class UserContact(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, json_dumps_params={'ensure_ascii': False})
     
     def delete(self, request):
+        """
+        Delete a contact of the authenticated user.
+
+        Args:
+        - request (Request): The Django request object containing the user and contact data.
+
+        Returns:
+        - JsonResponse: The response indicating the status of the operation and any errors.
+        - {'Status': False, 'Error': 'Необходима авторизация'}: If the user is not authenticated.
+        - {'Status': False}: If no contact with the given id exists or the contact is not related to the user.
+        - {'Status': True}: If the contact is deleted successfully.
+        """
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'}, status=403, json_dumps_params={'ensure_ascii': False})
         
@@ -359,6 +393,18 @@ class UserContact(APIView):
         return JsonResponse({'Status': False})
     
     def put(self, request):
+        """
+        Update the contact information of the authenticated user.
+
+        Args:
+        - request (Request): The Django request object containing the user and contact data.
+
+        Returns:
+        - JsonResponse: The response indicating the status of the operation and any errors.
+        - {'Status': False, 'Error': 'Необходима авторизация'}: If the user is not authenticated.
+        - {'Status': False}: If no contact with the given id exists or the contact is not related to the user.
+        - {'Status': True}: If the contact is updated successfully.
+        """
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'}, status=403, json_dumps_params={'ensure_ascii': False})
         
@@ -374,3 +420,65 @@ class UserContact(APIView):
                 else:
                      return JsonResponse({'Status': False, 'Errors': serializer.errors})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+    
+class OrderView(APIView):
+    def get(self, request):
+        """
+        Retrieve the orders associated with the authenticated user.
+
+        Args:
+        - request (Request): The Django request object containing the query parameters.
+
+        Returns:
+        - JsonResponse: The response containing the orders associated with the user.
+        - {'Status': False, 'Error': 'Необходима авторизация'}: If the user is not authenticated.
+        """
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'}, status=403, json_dumps_params={'ensure_ascii': False})
+        
+        params = dict(request.query_params)
+        
+        orders = Order.objects.filter(user_id=request.user.id)
+        
+        if 'id' in params:
+            orders = orders.filter(id=params['id'][0])
+        if 'state' in params:
+            orders = orders.filter(state=params['state'][0])
+            
+        orders = orders.prefetch_related(
+            'ordered_items__product_info__product__category',
+            'ordered_items__product_info__product_parameters__parameter').select_related('contact').annotate(
+            total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
+
+        serializer = OrderSerializer(orders, many=True)
+        return Response(serializer.data)
+    
+    def post(self, request):
+        """
+        Create a new order and send a notification.
+
+        Args:
+        - request (Request): The Django request object containing the user and contact data.
+
+        Returns:
+        - JsonResponse: The response indicating the status of the operation and any errors.
+        - {'Status': False, 'Error': 'Необходима авторизация'}: If the user is not authenticated.
+        - {'Status': False, 'Errors': 'Неправильно указаны аргументы'}: If the order id is invalid or the contact id is invalid.
+        - {'Status': False, 'Errors': 'Заказ уже подтверждён'}: If the order is already confirmed.
+        - {'Status': True}: If the order is created successfully.
+        """
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'}, status=403, json_dumps_params={'ensure_ascii': False})
+
+        if {'contact_id', 'order_id'}.issubset(request.data):
+            order = Order.objects.filter(user_id=request.user.id, id=request.data['order_id']).first()
+            if order:
+                if order.state != 'basket':
+                    return JsonResponse({'Status': False, 'Errors': 'Заказ уже подтверждён'}, json_dumps_params={'ensure_ascii': False})
+                order.contact_id = request.data['contact_id']
+                order.state = 'new'
+                order.save()
+                return JsonResponse({'Status': True})
+            else:
+                return JsonResponse({'Status': False, 'Errors': 'Неправильно указаны аргументы'}, json_dumps_params={'ensure_ascii': False})
+        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, json_dumps_params={'ensure_ascii': False}) 

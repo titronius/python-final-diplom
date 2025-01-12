@@ -126,7 +126,6 @@ class PartnerUpdate(APIView):
             else:
                 stream = get(url).content
                 data = load_yaml(stream, Loader=Loader)
-                # return JsonResponse({'Status': True})
                 shop, _ = Shop.objects.get_or_create(name=data['shop'], user_id=request.user.id)
                 
                 for category in data['categories']:

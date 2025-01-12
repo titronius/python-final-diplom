@@ -1,0 +1,36 @@
+version: '1.0'
+
+services:
+  web:
+    build: ./orders
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./orders:/usr/src/app/
+    ports:
+      - 1337:8000
+    depends_on:
+      - redis
+    environment:
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD}
+      EMAIL_PORT: ${EMAIL_PORT}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+
+  celery:
+    build: ./orders
+    command: celery -A orders worker --loglevel=info
+    volumes:
+      - ./orders:/usr/src/app
+    environment:
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD}
+      EMAIL_PORT: ${EMAIL_PORT}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+    depends_on:
+      - web
+      - redis
+
+  redis:
+    image: redis:7.2.7-alpine

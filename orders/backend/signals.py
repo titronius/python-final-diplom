@@ -9,6 +9,7 @@ from django_rest_passwordreset.signals import reset_password_token_created
 from backend.models import ConfirmEmailToken, Order, User
 from django.db.models import Sum, F
 from backend.serializers import OrderSerializer
+from .tasks import send_email
 
 new_user_registered = Signal()
 
@@ -61,21 +62,24 @@ def new_user_registered_signal(sender: Type[User], instance: User, created: bool
         {url_to_confirm}
         </a>
         """
+        title = f"Подтверждение регистрации {instance.email}"
         
-        msg = EmailMultiAlternatives(
-            # title:
-            f"Подтверждение регистрации {instance.email}",
-            # message:
-            text_content,
-            # from:
-            settings.EMAIL_HOST_USER,
-            # to:
-            [instance.email]
-        )
+        result = send_email.delay(title, instance.email, text_content, html_content)
         
-        msg.attach_alternative(html_content, "text/html")
+        # msg = EmailMultiAlternatives(
+        #     # title:
+        #     f"Подтверждение регистрации {instance.email}",
+        #     # message:
+        #     text_content,
+        #     # from:
+        #     settings.EMAIL_HOST_USER,
+        #     # to:
+        #     [instance.email]
+        # )
         
-        msg.send()
+        # msg.attach_alternative(html_content, "text/html")
+        
+        # msg.send()
 
 
 @receiver(new_order)
@@ -85,18 +89,21 @@ def new_order_signal(user_id, state, order_id, **kwargs):
     """
     # send an e-mail to the user
     user = User.objects.get(id=user_id)
-
-    msg = EmailMultiAlternatives(
-        # title:
-        f"Обновление статуса заказа № {order_id}",
-        # message:
-        f'Новый статус заказа: {state}',
-        # from:
-        settings.EMAIL_HOST_USER,
-        # to:
-        [user.email]
-    )
-    msg.send()
+    title = f"Обновление статуса заказа № {order_id}"
+    text_content = f'Новый статус заказа: {state}'
+    
+    result = send_email.delay(title, user.email, text_content)
+    # msg = EmailMultiAlternatives(
+    #     # title:
+    #     f"Обновление статуса заказа № {order_id}",
+    #     # message:
+    #     f'Новый статус заказа: {state}',
+    #     # from:
+    #     settings.EMAIL_HOST_USER,
+    #     # to:
+    #     [user.email]
+    # )
+    # msg.send()
     
     if state == 'Новый':
         orders = Order.objects.filter(id=order_id).prefetch_related(
@@ -150,18 +157,22 @@ def new_order_signal(user_id, state, order_id, **kwargs):
         <b>Квартира:</b> {serializer.data[0]['contact']['apartment']}
         """
         
-        msg = EmailMultiAlternatives(
-            # title:
-            f"Создан новый заказ № {order_id}",
-            # message:
-            f'Новый статус заказа: {state}',
-            # from:
-            settings.EMAIL_HOST_USER,
-            # to:
-            [settings.ADMIN_EMAIL]
-        )
+        title = f"Создан новый заказ № {order_id}"
+        text_content = f'Новый статус заказа: {state}'
         
-        msg.attach_alternative(html_content, "text/html")
+        result = send_email.delay(title, settings.ADMIN_EMAIL, text_content, html_content)
+        # msg = EmailMultiAlternatives(
+        #     # title:
+        #     f"Создан новый заказ № {order_id}",
+        #     # message:
+        #     f'Новый статус заказа: {state}',
+        #     # from:
+        #     settings.EMAIL_HOST_USER,
+        #     # to:
+        #     [settings.ADMIN_EMAIL]
+        # )
         
-        msg.send()
+        # msg.attach_alternative(html_content, "text/html")
+        
+        # msg.send()
         

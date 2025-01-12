@@ -8,7 +8,7 @@ from django.core.validators import URLValidator
 from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
 from yaml import Loader, load as load_yaml
-from backend.models import Category, Contact, Order, OrderItem, Parameter, Product, ProductInfo, ProductParameter, Shop, ConfirmEmailToken
+from backend.models import STATE_CHOICES, Category, Contact, Order, OrderItem, Parameter, Product, ProductInfo, ProductParameter, Shop, ConfirmEmailToken
 from backend.serializers import ContactSerializer, OrderItemSerializer, OrderSerializer, ProductInfoSerializer, ShopSerializer, UserSerializer
 from backend.signals import new_user_registered, new_order
 from django.contrib.auth.password_validation import validate_password
@@ -586,4 +586,24 @@ class OrderView(APIView):
                 return JsonResponse({'Status': True})
             else:
                 return JsonResponse({'Status': False, 'Errors': 'Неправильно указаны аргументы'}, json_dumps_params={'ensure_ascii': False})
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, json_dumps_params={'ensure_ascii': False}) 
+        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, json_dumps_params={'ensure_ascii': False})
+    
+    def put(self, request):
+        if not request.user.is_superuser:
+            return JsonResponse({'Status': False, 'Error': 'Доступно только администраторам'}, status=403, json_dumps_params={'ensure_ascii': False})
+
+        if {'order_id', 'state'}.issubset(request.data):
+            order = Order.objects.filter(id=request.data['order_id']).first()
+            if order:
+                state_name = ''
+                for item in STATE_CHOICES:
+                    if item[0] == request.data['state']:
+                        state_name = item[1]
+                        break
+                if state_name:
+                    order.state = request.data['state']
+                    order.save()
+                    new_order.send(sender=self.__class__, user_id=order.user.id, state=state_name, order_id=request.data['order_id'])
+                    return JsonResponse({'Status': True})
+                return JsonResponse({'Status': False, 'Errors': 'Неправильно указан статус'}, json_dumps_params={'ensure_ascii': False})
+        return JsonResponse({'Status': False, 'Errors': 'Неправильно указаны аргументы'}, json_dumps_params={'ensure_ascii': False})

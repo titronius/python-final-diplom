@@ -6,7 +6,8 @@
 
 Приложение работает на стэке DJANGO, CELERY, REDIS.
 
-Приложение контернейзировано, дял запуска приложения используем команду:
+## Docker-compose
+Приложение докеризировано, для запуска контейнера используем команды оркестратора:
 
 ```
 docker-compose up -d
@@ -15,4 +16,5 @@ docker-compose up -d
 Django сервер запускается на порту 1337, точка входа:
 http://localhost:1337/
 
-##Примеры запросов в файле [request-examples.txt](./request-examples.http)
+## Примеры запросов:
+Файл [request-examples.http](./request-examples.http)

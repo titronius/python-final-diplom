@@ -117,7 +117,3 @@ venv.bak/
 
 # mypy
 .mypy_cache/
-
-
-#requests
-request-examples.http

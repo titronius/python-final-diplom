@@ -1,0 +1,181 @@
+# примеры API-запросов
+
+@baseUrl = http://localhost:1337/api/v1/
+
+# login пользователя
+POST {{baseUrl}}user/login
+Content-Type: application/json
+
+{
+    "email": "admin@admin.ru",
+    "password": "adminpass"
+}
+###
+
+# user register
+POST {{baseUrl}}user/register
+Content-Type: application/json
+
+{
+    "first_name": "Andrew",
+    "last_name": "Titorenko",
+    "email": "mail@gmail.com",
+    "password": "password",
+    "company": "company"
+}
+###
+
+
+# user password reset confirm
+POST {{baseUrl}}user/password_reset/confirm
+Content-Type: application/json
+
+{
+    "email": "mail@gmail.com",
+    "password": "password",
+    "token": "token"
+}
+
+###
+
+# user password reset 
+POST {{baseUrl}}user/password_reset
+Content-Type: application/json
+
+{
+    "email": "mail@gmail.com"
+}
+
+###
+
+# отправка прайса
+POST {{baseUrl}}partner/update
+Content-Type: application/json
+Authorization: Token insert_token_here
+
+{
+    "url": "https://github.com/netology-code/python-final-diplom/raw/refs/heads/master/data/shop1.yaml"
+}
+###
+
+# получение заказов для поставщика
+GET {{baseUrl}}partner/orders
+Content-Type: application/json
+Authorization: Token insert_token_here
+
+###
+
+# получение статуса поставщика
+GET {{baseUrl}}partner/state
+Content-Type: application/json
+Authorization: Token insert_token_here
+###
+
+# изменение статуса поставщика
+POST {{baseUrl}}partner/state
+Content-Type: application/json
+Authorization: Token insert_token_here
+
+{
+    "state": "True"
+}
+###
+
+# products
+GET {{baseUrl}}products
+###
+
+# basket get
+GET {{baseUrl}}basket
+Authorization: Token insert_token_here
+###
+
+# basket add items
+POST {{baseUrl}}basket
+Content-Type: application/json
+Authorization: Token insert_token_here
+
+{
+    "items": [{"product_info": 48, "quantity": 13}, {"product_info": 49, "quantity": 5}]
+}
+###
+
+# basket delete items
+DELETE {{baseUrl}}basket
+Content-Type: application/json
+Authorization: Token insert_token_here
+
+{
+    "items": [{"product_info": 6}, {"product_info": 7}]
+}
+###
+
+# basket update items
+PUT {{baseUrl}}basket
+Content-Type: application/json
+Authorization: Token insert_token_here
+
+{
+    "items": [{"id": 5, "quantity": 2}, {"id": 6, "quantity": 2}]
+}
+###
+
+# contacts get
+GET {{baseUrl}}contact
+Authorization: Token insert_token_here
+###
+
+# contact add
+POST {{baseUrl}}contact
+Content-Type: application/json
+Authorization: Token insert_token_here
+
+{
+    "city": "Krasnodar",
+    "street": "Krasnaya",
+    "phone": "88005553535",
+    "house": "1a",
+    "apartment": "6"
+}
+###
+
+# edit contact
+PUT {{baseUrl}}contact
+Content-Type: application/json
+Authorization: Token insert_token_here
+
+{
+    "id": 3,
+    "city": "Moscow",
+    "street": "Tverskaya",
+    "phone": "88005553535"
+}
+###
+
+# orders get
+GET {{baseUrl}}order
+Authorization: Token insert_token_here
+###
+
+# order confirm
+POST {{baseUrl}}order
+Content-Type: application/json
+Authorization: Token insert_token_here
+
+{
+    "contact_id": 4,
+    "order_id": 5
+}
+###
+
+
+# status change
+PUT {{baseUrl}}order
+Content-Type: application/json
+Authorization: Token insert_token_here
+
+{
+    "order_id": 5,
+    "state": "basket"
+}
+###

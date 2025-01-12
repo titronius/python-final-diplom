@@ -7,7 +7,6 @@ from rest_framework.views import APIView
 from django.core.validators import URLValidator
 from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
-from yaml import Loader, load as load_yaml
 from backend.models import STATE_CHOICES, Category, Contact, Order, OrderItem, Parameter, Product, ProductInfo, ProductParameter, Shop, ConfirmEmailToken
 from backend.serializers import ContactSerializer, OrderItemSerializer, OrderSerializer, ProductInfoSerializer, ShopSerializer, UserSerializer
 from backend.signals import new_user_registered, new_order
@@ -16,17 +15,20 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from django.db.models import Q, Sum, F
 from distutils.util import strtobool
+from .tasks import do_import
+from drf_spectacular.utils import extend_schema
 
 class RegisterAccount(APIView):
-    def post(self, request, *args, **kwargs):
+    
+    def post(self, request):
         """
-            Process a POST request and create a new user.
+        Process a POST request and create a new user.
 
-            Args:
-                request (Request): The Django request object.
+        Args:
+            request (Request): The Django request object.
 
-            Returns:
-                JsonResponse: The response indicating the status of the operation and any errors.
+        Returns:
+            JsonResponse: The response indicating the status of the operation and any errors.
         """
         if {'first_name', 'last_name', 'email', 'password'}.issubset(request.data):
             try:
@@ -54,17 +56,17 @@ class LoginAccount(APIView):
     """
     
     # Авторизация методом POST
-    def post(self, request, *args, **kwargs):
+    def post(self, request):
         print(request.data)
         """
-                Authenticate a user.
+        Authenticate a user.
 
-                Args:
-                    request (Request): The Django request object.
+        Args:
+            request (Request): The Django request object.
 
-                Returns:
-                    JsonResponse: The response indicating the status of the operation and any errors.
-                """
+        Returns:
+            JsonResponse: The response indicating the status of the operation and any errors.
+        """
         if {'email', 'password'}.issubset(request.data):
             user = authenticate(request, username=request.data['email'], password=request.data['password'])
 
@@ -79,7 +81,7 @@ class LoginAccount(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, json_dumps_params={'ensure_ascii': False})
 
 class ConfirmToken(APIView):
-    def get(self, request: Request, *args, **kwargs):
+    def get(self, request: Request):
         """
         Verify a user's email address.
 
@@ -109,7 +111,7 @@ class PartnerUpdate(APIView):
     """
     Класс для обновления прайса от поставщика
     """
-    def post(self, request, *args, **kwargs):
+    def post(self, request):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'}, status=403, json_dumps_params={'ensure_ascii': False})
 
@@ -124,33 +126,7 @@ class PartnerUpdate(APIView):
             except ValidationError as e:
                 return JsonResponse({'Status': False, 'Error': str(e)})
             else:
-                stream = get(url).content
-                data = load_yaml(stream, Loader=Loader)
-                shop, _ = Shop.objects.get_or_create(name=data['shop'], user_id=request.user.id)
-                
-                for category in data['categories']:
-                    category, _ = Category.objects.get_or_create(id=category['id'], name=category['name'])
-                    category.shops.add(shop.id)
-                    category.save()
-                    
-                ProductInfo.objects.filter(shop_id=shop.id).delete()
-                
-                for good in data['goods']:
-                    product, _ = Product.objects.get_or_create(name=good['name'], category_id=good['category'])
-                    
-                    product_info = ProductInfo.objects.create(product_id=product.id,
-                                                              external_id=good['id'],
-                                                              model=good['model'],
-                                                              price=good['price'],
-                                                              price_rrc=good['price_rrc'],
-                                                              quantity=good['quantity'],
-                                                              shop_id=shop.id)
-                    for key, value in good['parameters'].items():
-                        parameter, _ = Parameter.objects.get_or_create(name=key)
-                        ProductParameter.objects.create(product_info_id=product_info.id,
-                                                        parameter_id=parameter.id,
-                                                        value=value)
-                    
+                result = do_import.delay(url, request.user.id)
                 return JsonResponse({'Status': True})
             
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, json_dumps_params={'ensure_ascii': False})                 
@@ -205,7 +181,7 @@ class PartnerState(APIView):
     - None
     """
     # получить текущий статус
-    def get(self, request, *args, **kwargs):
+    def get(self, request):
         """
         Retrieve the state of the partner.
 
@@ -228,7 +204,7 @@ class PartnerState(APIView):
         return Response(serializer.data)
 
     # изменить текущий статус
-    def post(self, request, *args, **kwargs):
+    def post(self, request):
         """
         Update the state of a partner.
 
@@ -267,7 +243,7 @@ class ProductInfoView(APIView):
     - None
     """
 
-    def get(self, request: Request, *args, **kwargs):
+    def get(self, request: Request):
         """
         Retrieve the product information based on the specified filters.
 

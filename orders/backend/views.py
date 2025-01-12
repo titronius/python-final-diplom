@@ -16,7 +16,6 @@ from rest_framework.response import Response
 from django.db.models import Q, Sum, F
 from distutils.util import strtobool
 from .tasks import do_import
-from drf_spectacular.utils import extend_schema
 
 class RegisterAccount(APIView):
     

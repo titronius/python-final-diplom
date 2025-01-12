@@ -15,4 +15,4 @@ docker-compose up -d
 Django сервер запускается на порту 1337, точка входа:
 http://localhost:1337/
 
-##Примеры запросов в файле [request-examples.txt](request-examples.txt)
+##Примеры запросов в файле [request-examples.txt](./request-examples.http)

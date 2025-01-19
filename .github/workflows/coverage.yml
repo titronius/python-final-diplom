@@ -11,5 +11,5 @@ jobs:
           - name: Python Coverage 
             uses: orgoro/coverage@v3.2
             with:
-                coverageFile: orders/coverage.xml
+                coverageFile: ./orders/coverage.xml
                 token: ${{ secrets.GITHUB_TOKEN }}

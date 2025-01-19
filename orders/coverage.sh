@@ -1,2 +1,3 @@
-coverage run --source='.' manage.py test backend
+coverage run --source='./backend/' manage.py test backend
 coverage report
+coverage xml

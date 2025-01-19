@@ -34,3 +34,18 @@ services:
 
   redis:
     image: redis:7.2.7-alpine
+
+  test:
+    build: ./orders
+    command: python manage.py test
+    volumes:
+      - ./orders:/usr/src/app
+    depends_on:
+      - web
+      - redis
+    environment:
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD}
+      EMAIL_PORT: ${EMAIL_PORT}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}

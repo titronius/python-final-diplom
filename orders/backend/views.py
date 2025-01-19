@@ -56,7 +56,6 @@ class LoginAccount(APIView):
     
     # Авторизация методом POST
     def post(self, request):
-        print(request.data)
         """
         Authenticate a user.
 
@@ -214,7 +213,7 @@ class PartnerState(APIView):
         - JsonResponse: The response indicating the status of the operation and any errors.
         """
         if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'},\
+            return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'},\
                 status=403, json_dumps_params={'ensure_ascii': False})
 
         if request.user.type != 'shop':
@@ -226,7 +225,7 @@ class PartnerState(APIView):
                 Shop.objects.filter(user_id=request.user.id).update(state=strtobool(state))
                 return JsonResponse({'Status': True})
             except ValueError as error:
-                return JsonResponse({'Status': False, 'Errors': str(error)})
+                return JsonResponse({'Status': False, 'Errors': 'Неправильно указан статус'})
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'},\
             json_dumps_params={'ensure_ascii': False})

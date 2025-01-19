@@ -37,7 +37,7 @@ services:
 
   test:
     build: ./orders
-    command: python manage.py test
+    command: "sh -c ./coverage.sh"
     volumes:
       - ./orders:/usr/src/app
     depends_on:
@@ -49,3 +49,5 @@ services:
       EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD}
       EMAIL_PORT: ${EMAIL_PORT}
       CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+    profiles:
+      - donotstart

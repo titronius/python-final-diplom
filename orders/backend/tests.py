@@ -353,3 +353,4 @@ class PartnerStateTestCase(TestCase):
         response_data = json.loads(response_content)
 
         self.assertEqual(response_data, {'Status': False, 'Error': 'Только для магазинов'})
+    

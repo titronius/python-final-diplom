@@ -4,6 +4,8 @@ LoginAccount, OrderView, PartnerOrders, PartnerState, PartnerUpdate, ProductInfo
 
 from django_rest_passwordreset.views import reset_password_request_token, reset_password_confirm
 
+from drf_spectacular.views import SpectacularAPIView
+
 app_name = 'backend'
 
 urlpatterns = [
@@ -18,5 +20,6 @@ urlpatterns = [
     path('products', ProductInfoView.as_view(), name='shops'),
     path('basket', BasketView.as_view(), name='basket'),
     path('contact', ContactView.as_view(), name='contact'),
-    path('order', OrderView.as_view(), name='order')
+    path('order', OrderView.as_view(), name='order'),
+    path('schema/', SpectacularAPIView.as_view(), name='schema'),
 ]

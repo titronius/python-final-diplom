@@ -168,3 +168,10 @@ DEFAULT_URL_FOR_MAIL = 'localhost/api/v1'
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
 
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Partner and clients orders API',
+    'DESCRIPTION': 'API for manage orders and products by partners and for order products by clients.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+}

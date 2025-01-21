@@ -16,9 +16,15 @@ from rest_framework.response import Response
 from django.db.models import Q, Sum, F
 from distutils.util import strtobool
 from .tasks import do_import
+from backend.schema import BasketAddResponse, BasketAddUpdateRequest, BasketBaseRequest, BasketDeleteResponse, BasketUpdateResponse, ContactRequest, ContactResponse, LoginAccountRequest, LoginAccountResponse, OrderConfirmRequest, OrderResponse, OrderUpdateRequest, PartnerStateRequest, PartnerStateResponse, PartnerUpdateRequest, PartnerUpdateResponse, RegisterAccountRequest, RegisterAccountResponse
+
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 
 class RegisterAccount(APIView):
-    
+    @extend_schema(request=RegisterAccountRequest,
+                   responses={'200:': RegisterAccountResponse},
+                   tags=['RegisterAccount'])
     def post(self, request):
         """
         Process a POST request and create a new user.
@@ -36,7 +42,7 @@ class RegisterAccount(APIView):
                 error_array = []
                 for item in password_error:
                     error_array.append(item)
-                return JsonResponse({'Status': False, 'Errors': {'password': error_array}}, json_dumps_params={'ensure_ascii': False})
+                return JsonResponse({'Status': False, 'Errors': {'password': error_array}}, json_dumps_params={'ensure_ascii': False}, status=400)
             else:
                 user_serializer = UserSerializer(data=request.data)
                 if user_serializer.is_valid():
@@ -45,16 +51,19 @@ class RegisterAccount(APIView):
                     user.save()
                     return JsonResponse({'Status': True})
                 else:
-                    return JsonResponse({'Status': False, 'Errors': user_serializer.errors}, json_dumps_params={'ensure_ascii': False})
+                    return JsonResponse({'Status': False, 'Errors': user_serializer.errors}, json_dumps_params={'ensure_ascii': False}, status=400)
 
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, json_dumps_params={'ensure_ascii': False})
+        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, json_dumps_params={'ensure_ascii': False}, status=400)
             
 class LoginAccount(APIView):
     """
     Класс для авторизации пользователей
     """
-    
     # Авторизация методом POST
+    @extend_schema(request=LoginAccountRequest,
+                   responses={
+                       '200:': LoginAccountResponse},
+                   tags=['LoginAccount'])
     def post(self, request):
         """
         Authenticate a user.
@@ -79,6 +88,12 @@ class LoginAccount(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, json_dumps_params={'ensure_ascii': False})
 
 class ConfirmToken(APIView):
+    @extend_schema(parameters=[
+        OpenApiParameter('email', OpenApiTypes.STR, OpenApiParameter.PATH),
+        OpenApiParameter('token', OpenApiTypes.STR, OpenApiParameter.PATH)
+    ],
+                   responses={'200': OpenApiTypes.STR},
+                   tags=['ConfirmToken'])
     def get(self, request: Request):
         """
         Verify a user's email address.
@@ -109,6 +124,9 @@ class PartnerUpdate(APIView):
     """
     Класс для обновления прайса от поставщика
     """
+    @extend_schema(request=PartnerUpdateRequest,
+                   responses={'200:': PartnerUpdateResponse},
+                   tags=['PartnerUpdate'])
     def post(self, request):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Необходима авторизация'}, status=403, json_dumps_params={'ensure_ascii': False})
@@ -139,6 +157,8 @@ class PartnerOrders(APIView):
     - None
     """
 
+    @extend_schema(responses={'200:': OrderSerializer(many=True)},
+                   tags=['PartnerOrders'])
     def get(self, request):
         """
         Retrieve the orders associated with the authenticated partner.
@@ -179,6 +199,10 @@ class PartnerState(APIView):
     - None
     """
     # получить текущий статус
+    @extend_schema(responses={
+        '200:': ShopSerializer
+    },
+                   tags=['PartnerState'])
     def get(self, request):
         """
         Retrieve the state of the partner.
@@ -202,6 +226,9 @@ class PartnerState(APIView):
         return Response(serializer.data)
 
     # изменить текущий статус
+    @extend_schema(request=PartnerStateRequest,
+                   responses={'200:': PartnerStateResponse},
+                   tags=['PartnerState'])
     def post(self, request):
         """
         Update the state of a partner.
@@ -240,7 +267,15 @@ class ProductInfoView(APIView):
     Attributes:
     - None
     """
-
+    @extend_schema(parameters=[
+        OpenApiParameter('shop_id', OpenApiTypes.INT, required=False),
+        OpenApiParameter('category_id', OpenApiTypes.INT, required=False),
+        OpenApiParameter('category_name', OpenApiTypes.STR, required=False),
+        OpenApiParameter('product_name', OpenApiTypes.STR, required=False),
+        OpenApiParameter('model', OpenApiTypes.STR, required=False)
+        ],
+                   responses={'200:': ProductInfoSerializer(many=True)},
+                   tags=['ProductInfoView'])
     def get(self, request: Request):
         """
         Retrieve the product information based on the specified filters.
@@ -283,6 +318,8 @@ class BasketView(APIView):
     """
     Класс для работы с корзиной пользователя
     """
+    @extend_schema(responses={'200:': OrderSerializer(many=True)},
+                   tags=['BasketView'])
     def get(self, request):
         """
         Retrieve the items in the user's basket.
@@ -305,6 +342,9 @@ class BasketView(APIView):
         serializer = OrderSerializer(basket, many=True)
         return Response(serializer.data)
     
+    @extend_schema(request=BasketAddUpdateRequest(many=True),
+                   responses={'200:': BasketAddResponse},
+                   tags=['BasketView'])
     def post(self, request):
         """
         Add items to the user's basket.
@@ -334,9 +374,11 @@ class BasketView(APIView):
                         objects_created += 1
                 else:
                     return JsonResponse({'Status': False, 'Errors': serializer.errors})
-            return JsonResponse({'Status': True, 'Создано объектов': objects_created}, json_dumps_params={'ensure_ascii': False})
+            return JsonResponse({'Status': True, 'objects_created': objects_created}, json_dumps_params={'ensure_ascii': False})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, json_dumps_params={'ensure_ascii': False})
     
+    @extend_schema(responses={'200:': BasketDeleteResponse},
+                   tags=['BasketView'])
     def delete(self, request):
         """
         Remove items from the user's basket.
@@ -360,9 +402,12 @@ class BasketView(APIView):
                     if item:
                         item.delete()
                         deleted_count += 1
-            return JsonResponse({'Status': True, 'Удалено объектов': deleted_count}, json_dumps_params={'ensure_ascii': False})
+            return JsonResponse({'Status': True, 'deleted_count': deleted_count}, json_dumps_params={'ensure_ascii': False})
         return JsonResponse({'Status': False, 'Errors': 'Нету данных'}, json_dumps_params={'ensure_ascii': False})
     
+    @extend_schema(request=BasketAddUpdateRequest(many=True),
+                   responses={'200:': BasketUpdateResponse},
+                   tags=['BasketView'])
     def put(self, request):
         """
         Update the quantity of items in the user's basket.
@@ -385,13 +430,15 @@ class BasketView(APIView):
             basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
             objects_updated = 0
             for order_item in items_dict:
-                if type(order_item['id']) == int and type(order_item['quantity']) == int:
-                    objects_updated += OrderItem.objects.filter(order_id=basket.id, id=order_item['id']).update(
+                if type(order_item['product_info']) == int and type(order_item['quantity']) == int:
+                    objects_updated += OrderItem.objects.filter(order_id=basket.id, id=order_item['product_info']).update(
                         quantity=order_item['quantity'])
-            return JsonResponse({'Status': True, 'Обновлено объектов': objects_updated}, json_dumps_params={'ensure_ascii': False})
+            return JsonResponse({'Status': True, 'objects_updated': objects_updated}, json_dumps_params={'ensure_ascii': False})
         return JsonResponse({'Status': False, 'Errors': 'Нету данных'}, json_dumps_params={'ensure_ascii': False})
 
 class ContactView(APIView):
+    @extend_schema(responses={'200:': ContactSerializer(many=True)},
+                   tags=['ContactView'])
     def get(self, request):
         """
         Retrieve the contact information of the authenticated user.
@@ -412,6 +459,9 @@ class ContactView(APIView):
         serializer = ContactSerializer(contacts, many=True)
         return Response(serializer.data)
     
+    @extend_schema(request=ContactRequest,
+                   responses={'200:': ContactResponse},
+                   tags=['ContactView'])
     def post(self, request):
         """
         Create a new contact for the authenticated user.
@@ -440,6 +490,8 @@ class ContactView(APIView):
             
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, json_dumps_params={'ensure_ascii': False})
     
+    @extend_schema(responses={'200:': ContactResponse},
+                   tags=['ContactView'])
     def delete(self, request):
         """
         Delete a contact of the authenticated user.
@@ -466,6 +518,9 @@ class ContactView(APIView):
         
         return JsonResponse({'Status': False})
     
+    @extend_schema(request=ContactRequest,
+                   responses={'200:': ContactResponse},
+                   tags=['ContactView'])
     def put(self, request):
         """
         Update the contact information of the authenticated user.
@@ -496,6 +551,12 @@ class ContactView(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
     
 class OrderView(APIView):
+    @extend_schema(parameters=[
+        OpenApiParameter('id', OpenApiTypes.INT, required=False),
+        OpenApiParameter('state', OpenApiTypes.STR, required=False),
+        ],
+                   responses={'200:': OrderSerializer(many=True)},
+                   tags=['OrderView'])
     def get(self, request):
         """
         Retrieve the orders associated with the authenticated user.
@@ -527,6 +588,9 @@ class OrderView(APIView):
         serializer = OrderSerializer(orders, many=True)
         return Response(serializer.data)
     
+    @extend_schema(request=OrderConfirmRequest,
+                   responses={'200:': OrderResponse},
+                   tags=['OrderView'])
     def post(self, request):
         """
         Create a new order and send a notification.
@@ -561,6 +625,9 @@ class OrderView(APIView):
                 return JsonResponse({'Status': False, 'Errors': 'Неправильно указаны аргументы'}, json_dumps_params={'ensure_ascii': False})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, json_dumps_params={'ensure_ascii': False})
     
+    @extend_schema(request=OrderUpdateRequest,
+                   responses={'200:': OrderResponse},
+                   tags=['OrderView'])
     def put(self, request):
         if not request.user.is_superuser:
             return JsonResponse({'Status': False, 'Error': 'Доступно только администраторам'}, status=403, json_dumps_params={'ensure_ascii': False})

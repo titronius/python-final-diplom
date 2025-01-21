@@ -116,7 +116,7 @@ Content-Type: application/json
 Authorization: Token insert_token_here
 
 {
-    "items": [{"id": 5, "quantity": 2}, {"id": 6, "quantity": 2}]
+    "items": [{"product_info": 5, "quantity": 2}, {"product_info": 6, "quantity": 2}]
 }
 ###
 

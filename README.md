@@ -28,7 +28,7 @@ Django сервер запускается на порту 1337, точка вх
 http://localhost:1337/
 
 ## Документация SWAGGER
-Документация формируется благодаря drf_spectacular и прописанию схемы в [orders/backend/schema.py](schema.py)
+Документация формируется благодаря drf_spectacular и прописанию схемы в [schema.py](orders/backend/schema.py)
 
 Ссылка на сервере:
 http://localhost:1337/api/docs/

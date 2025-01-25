@@ -33,5 +33,11 @@ http://localhost:1337/
 Ссылка на сервере:
 http://localhost:1337/api/docs/
 
+
+## Авторизация через соц. сети
+Авторизовавшись через google - можно получить токен.
+
+http://localhost:1337/social/login/google-oauth2/
+
 ## Примеры запросов:
 Файл [request-examples.http](./request-examples.http)

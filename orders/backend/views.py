@@ -86,7 +86,7 @@ class LoginAccount(APIView):
             return JsonResponse({'Status': False, 'Errors': 'Не удалось авторизовать'}, json_dumps_params={'ensure_ascii': False})
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, json_dumps_params={'ensure_ascii': False})
-
+    
 class ConfirmToken(APIView):
     @extend_schema(parameters=[
         OpenApiParameter('email', OpenApiTypes.STR, OpenApiParameter.PATH),

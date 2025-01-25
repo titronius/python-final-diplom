@@ -9,3 +9,4 @@ drf-spectacular==0.28.0
 setuptools
 social-auth-app-django==5.4.2
 coverage==7.6.10
+django-jet-reboot

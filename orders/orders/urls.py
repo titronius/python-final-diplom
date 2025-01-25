@@ -24,7 +24,8 @@ from django.contrib.auth import views as auth_views
 urlpatterns = [
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='docs'), 
-    path('admin/', admin.site.urls),
+    path(r'jet/', include('jet.urls', 'jet')),  # Django JET URLS
+    path(r'admin/', admin.site.urls),
     path('api/v1/', include('backend.urls', namespace='backend')),
     path('social/', include('social_django.urls', namespace='social')),
     # path('api/v1/logout/', logout, name='logout'),

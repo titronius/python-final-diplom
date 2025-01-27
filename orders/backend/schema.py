@@ -10,6 +10,7 @@ class RegisterAccountRequest(serializers.Serializer):
     password = serializers.CharField()
     company = serializers.CharField(required=False)
     position = serializers.CharField(required=False)
+    avatar = serializers.URLField(required=False)
     
 class RegisterAccountResponse(BaseResponse):
     pass

@@ -20,6 +20,7 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from django.contrib.auth import logout
 from django.contrib.auth import views as auth_views
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
@@ -29,4 +30,4 @@ urlpatterns = [
     path('api/v1/', include('backend.urls', namespace='backend')),
     path('social/', include('social_django.urls', namespace='social')),
     # path('api/v1/logout/', logout, name='logout'),
-]
+]+ static('/CACHE/', document_root='CACHE/') + static('/media/', document_root='media/')

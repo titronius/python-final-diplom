@@ -21,7 +21,8 @@ Content-Type: application/json
     "last_name": "Titorenko",
     "email": "mail@gmail.com",
     "password": "password",
-    "company": "company"
+    "company": "company",
+    "avatar": "https://i.pinimg.com/280x280_RS/26/c1/a8/26c1a80ac6e4892549174516472a2d82.jpg"
 }
 ###
 

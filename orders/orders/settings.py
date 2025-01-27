@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'backend',
     'social_django',
+    'imagekit'
 ]
 
 MIDDLEWARE = [

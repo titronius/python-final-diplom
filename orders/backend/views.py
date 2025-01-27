@@ -15,8 +15,10 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from django.db.models import Q, Sum, F
 from distutils.util import strtobool
-from .tasks import do_import
-from backend.schema import BasketAddResponse, BasketAddUpdateRequest, BasketBaseRequest, BasketDeleteResponse, BasketUpdateResponse, ContactRequest, ContactResponse, LoginAccountRequest, LoginAccountResponse, OrderConfirmRequest, OrderResponse, OrderUpdateRequest, PartnerStateRequest, PartnerStateResponse, PartnerUpdateRequest, PartnerUpdateResponse, RegisterAccountRequest, RegisterAccountResponse
+from .tasks import create_thumbnail, do_import
+from backend.schema import BasketAddResponse, BasketAddUpdateRequest, BasketDeleteResponse, BasketUpdateResponse,\
+    ContactRequest, ContactResponse, LoginAccountRequest, LoginAccountResponse, OrderConfirmRequest, OrderResponse, OrderUpdateRequest,\
+    PartnerStateRequest, PartnerStateResponse, PartnerUpdateRequest, PartnerUpdateResponse, RegisterAccountRequest, RegisterAccountResponse
 
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
@@ -49,6 +51,8 @@ class RegisterAccount(APIView):
                     user = user_serializer.save()
                     user.set_password(request.data['password'])
                     user.save()
+                    if user.avatar:
+                        create_thumbnail.delay(user.avatar.path)
                     return JsonResponse({'Status': True})
                 else:
                     return JsonResponse({'Status': False, 'Errors': user_serializer.errors}, json_dumps_params={'ensure_ascii': False}, status=400)

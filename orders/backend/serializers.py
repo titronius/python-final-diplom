@@ -16,9 +16,10 @@ class ContactSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     contacts = ContactSerializer(read_only=True, many=True)
-    
-    avatar = serializers.URLField()
+
     def validate_avatar(self, value):
+        if not value:
+            return None
         response = requests.get(value)
         if response.status_code == 200:
             file_name = f"{self.initial_data['id']}.{value.split('.')[-1]}"
@@ -70,7 +71,7 @@ class ProductInfoSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = ProductInfo
-        fields = ('id', 'model', 'product', 'shop', 'quantity', 'price', 'price_rrc', 'product_parameters','photo', 'photo_thumbnail')
+        fields = ('id', 'model', 'product', 'shop', 'quantity', 'price', 'price_rrc', 'product_parameters', 'photo')
         read_only_fields = ('id',)
 
 

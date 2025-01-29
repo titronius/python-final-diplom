@@ -17,11 +17,12 @@ EMAIL_PORT = '465'
 CELERY_BROKER_URL = 'redis://redis:6379/0'
 CELERY_WORKER_RUNNING = 'True'
 
-# Следующие переменные для полученяи токена при помощи соц.сети, а именно google. Тут инструкция, как получить эти переменные: https://developers.google.com/identity/protocols/oauth2?hl=ru
+# Следующие переменные для получения токена при помощи соц.сети, а именно google.
+# Тут инструкция, как получить эти переменные: https://developers.google.com/identity/protocols/oauth2?hl=ru
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = 'GOOGLE_OAUTH2_KEY'
 SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = 'GOOGLE_OAUTH2_SECRET'
 
-# Токее приложения дял трэйсинга ошибок, получать тут: https://rollbar.com/
+# Токен приложения для трэйсинга ошибок, получать тут: https://rollbar.com/
 ROLLBAR_ACCESS_TOKEN = 'ROLLBAR_ACCESS_TOKEN'
 ```
 

@@ -15,6 +15,14 @@ EMAIL_HOST_USER = 'mail@mail.ru' # адрес почты SMTP сервера
 EMAIL_HOST_PASSWORD = 'password' # пароль почты SMTP сервера Инструкция для получения: https://help.mail.ru/mail/security/protection/external/
 EMAIL_PORT = '465'
 CELERY_BROKER_URL = 'redis://redis:6379/0'
+CELERY_WORKER_RUNNING = 'True'
+
+# Следующие переменные для полученяи токена при помощи соц.сети, а именно google. Тут инструкция, как получить эти переменные: https://developers.google.com/identity/protocols/oauth2?hl=ru
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = 'GOOGLE_OAUTH2_KEY'
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = 'GOOGLE_OAUTH2_SECRET'
+
+# Токее приложения дял трэйсинга ошибок, получать тут: https://rollbar.com/
+ROLLBAR_ACCESS_TOKEN = 'ROLLBAR_ACCESS_TOKEN'
 ```
 
 Приложение докеризировано, для запуска контейнера используем команды оркестратора:

@@ -15,3 +15,4 @@ rollbar==1.1.2
 django-cachalot==2.7.0
 django-debug-toolbar==5.0.1
 django-redis==5.4.0
+django-silk==5.3.2

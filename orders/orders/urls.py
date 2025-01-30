@@ -30,5 +30,6 @@ urlpatterns = [
     path(r'admin/', admin.site.urls),
     path('api/v1/', include('backend.urls', namespace='backend')),
     path('social/', include('social_django.urls', namespace='social')),
+    path('silk/', include('silk.urls', namespace='silk')),
     # path('api/v1/logout/', logout, name='logout'),
 ]+ static('/CACHE/', document_root='CACHE/') + static('/media/', document_root='media/') + debug_toolbar_urls()

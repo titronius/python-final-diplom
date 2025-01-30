@@ -46,7 +46,8 @@ INSTALLED_APPS = [
     'social_django',
     'imagekit',
     'cachalot',
-    'debug_toolbar'
+    'debug_toolbar',
+    'silk'
 ]
 
 MIDDLEWARE = [
@@ -57,6 +58,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'silk.middleware.SilkyMiddleware',
     'social_django.middleware.SocialAuthExceptionMiddleware',
     'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
